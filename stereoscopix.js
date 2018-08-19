@@ -5,6 +5,8 @@ cam = {
 	right : [-3000, 5000, 20000]
 	};
 
+spot = [-1, -1, -1];
+
 function Pane(canvas, cam, width, height) {
 	canvas.width = width;
 	canvas.height = height;
@@ -69,10 +71,10 @@ function stereoscopixDisplay(a, b, c) {
           //console.log("axis done" );
          
          panes.canvas.forEach(canvas => {
-           canvas.renderer.txel(i, j, k, [0, 0, 255, 128], panes.rotation, panes.translation, canvas.camera);
-           canvas.renderer.txel(o, j, k, [0, 64, 255, 128], panes.rotation, panes.translation, canvas.camera);
-           canvas.renderer.txel(k, o, i, [0, 128, 255, 128], panes.rotation, panes.translation, canvas.camera);
-           canvas.renderer.txel(j, i, o, [64, 0, 255, 128], panes.rotation, panes.translation, canvas.camera)
+           canvas.renderer.txel(i, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
+           canvas.renderer.txel(o, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
+           canvas.renderer.txel(k, o, i, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
+           canvas.renderer.txel(j, i, o, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot)
            }
            );
            
@@ -100,8 +102,8 @@ function stereoscopixDisplay(a, b, c) {
             ));
 	
 	     panes.canvas.forEach(canvas => {
-           canvas.renderer.txel(a, b, c, [120, 64, 255, 255], panes.rotation, [25, 25, 0], canvas.camera);
-           canvas.renderer.txel(a, c, d, [120, 64, 255, 255], panes.rotation, [25, 25, 0], canvas.camera);
+           canvas.renderer.txel(a, b, c, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
+           canvas.renderer.txel(a, c, d, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
            }
            );
 	
