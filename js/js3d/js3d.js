@@ -146,22 +146,61 @@ Lourah.js3d.Renderer = function(width, height) {
 			this.polyLine([...ap, ap[0]], color, rotation, translation, camera);
 			};
 		
-		this.txel = (p1, p2, p3, color, rotation, translation, camera) => {
+		this.vector = (p1, p2) => [
+		p2[0] - p1[0],
+		p2[1] - p1[1],
+		p2[2] - p1[2]
+		];
+		
+		
+		this.vectorialProduct = (v1, v2) => [
+		v1[1]*v2[2] - v1[2]*v2[1],
+		v1[2]*v2[0] - v1[0]*v2[2],
+		v1[0]*v2[1] - v1[1]*v2[0]
+		];
+		
+		this.scalarProduct = (v1, v2) => (
+		   v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
+		);
+		
+		
+		this.norm = v => Math.sqrt(this.scalarProduct(v, v));
+		
+		
+		this.normalize = v => {
+			var norm = this.norm(v);
+			return [ v[0]/norm, v[1]/norm, v[2]/norm ];
+			}
+		
+		
+		this.txel = (p1, p2, p3, color, rotation, translation, camera, spot) => {
 			//console.log("txel::" + [p1, p2, p3]);
-			var [l1, l2, l3] = [
-			   this.buildLine(p1, p2)
-			  ,this.buildLine(p2, p3)
-			  ,this.buildLine(p3, p1)
-			  ].sort((a,b) => b.length - a.length);
+			var [pr1, pr2, pr3] = [p1, p2, p3].map(p => Lourah.js3d.rotate(rotation, p));
+			
+			var [[l1,v1], [l2,v2], [l3,v3]] = [
+			   [this.buildLine(p1, p2), this.vector(pr1, pr2)]
+			  ,[this.buildLine(p2, p3), this.vector(pr2, pr3)]
+			  ,[this.buildLine(p3, p1), this.vector(pr3, pr1)]
+			  ].sort((a,b) => b[0].length - a[0].length);
 			 
 			 //[l1, l2, l3].forEach((l, i) => console.log("l::" + i + "::" + l.length));
+			
+			if (spot === undefined) spot = [0, 0, 1];
+			var ortho = this.normalize(this.vectorialProduct(v1, v2));
+			var lambda = this.scalarProduct(ortho, this.normalize(spot));
+			//console.log("lambda::" + lambda);
+			//lambda = Math.abs(lambda);
+			var colorSpot = color.map((c,i) => {
+				if (i === 3) return c;
+				return (lambda + 1)*c/2;
+				});
 			
 			 l1.forEach((p, i) => {
 				/* go from l1 to l2 follow l3 */
 				if (i < l3.length) {
-					this.line(l1[i], l3[l3.length - i -1], color, rotation, translation, camera);
+					this.line(l1[i], l3[l3.length - i -1], colorSpot, rotation, translation, camera);
 					} else {
-					this.line(l1[i], l2[l2.length - i + l3.length], color, rotation, translation, camera);
+					this.line(l1[i], l2[l2.length - i + l3.length], colorSpot, rotation, translation, camera);
 					}
 				});
 			};
