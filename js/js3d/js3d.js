@@ -113,29 +113,26 @@ Lourah.js3d.Renderer = function(width, height) {
 		ap.forEach(p => storePoint(p, color, rotation, translation, camera));
 		};
 		
-    
-	this.line = (p1, p2, color, rotation, translation, camera) => {
+	this.buildLine = (p1, p2) => {
 		var d = Math.max(...p1.map((p, i) => (
 		   Math.abs(p2[i] - p1[i])
 		   )));
 		var step = 1/d;
-		/*
-		console.log("line::p1::" + p1);
-		console.log("line::p2::" + p2);
-		console.log("line:: diagonal::" + diagonal);
-		console.log("line::step::" + step);
-		console.log("line::d::" + d);
-		*/
+		ret = new Array(d|0);
 		var count = 0;
 		for(var t = 0; t < 1; t+= step) {
-			count++;
-			storePoint([
+		   ret[count++] = [
 			  (p2[0] - p1[0])*t + p1[0]
 			, (p2[1] - p1[1])*t + p1[1]
 			, (p2[2] - p1[2])*t + p1[2]
-			], color, rotation, translation, camera);
-			}
-		  //console.log("line::count::" + count);
+			];
+		}
+		//console.log("count::" + count);
+		return ret;
+	};
+    
+	    this.line = (p1, p2, color, rotation, translation, camera) => {
+		   this.buildLine(p1, p2).forEach(p => storePoint(p, color, rotation, translation, camera));
 		}
 		
 		this.polyLine = (ap, color, rotation, translation, camera) => {
@@ -149,7 +146,25 @@ Lourah.js3d.Renderer = function(width, height) {
 			this.polyLine([...ap, ap[0]], color, rotation, translation, camera);
 			};
 		
-		
+		this.txel = (p1, p2, p3, color, rotation, translation, camera) => {
+			//console.log("txel::" + [p1, p2, p3]);
+			var [l1, l2, l3] = [
+			   this.buildLine(p1, p2)
+			  ,this.buildLine(p2, p3)
+			  ,this.buildLine(p3, p1)
+			  ].sort((a,b) => b.length - a.length);
+			 
+			 //[l1, l2, l3].forEach((l, i) => console.log("l::" + i + "::" + l.length));
+			
+			 l1.forEach((p, i) => {
+				/* go from l1 to l2 follow l3 */
+				if (i < l3.length) {
+					this.line(l1[i], l3[l3.length - i -1], color, rotation, translation, camera);
+					} else {
+					this.line(l1[i], l2[l2.length - i + l3.length], color, rotation, translation, camera);
+					}
+				});
+			};
 		
 		this.flush = (imageData) => {
 			//var imageData = new ImageData(width, height);
@@ -177,6 +192,7 @@ Lourah.js3d.color.negative = ([r,g,b,a=255]) => (
 
 Lourah.js3d.color.rgb = (r, g, b) => ([r, g, b, 255]);
 Lourah.js3d.color.rgba = (r, g, b, a) => ([r, g, b, a]);
+
 
 Lourah.js3d.test = () => {
 	var p = Lourah.js3d.transformDeg(
