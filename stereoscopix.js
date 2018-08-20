@@ -1,11 +1,11 @@
  var panes = {};
 
 cam = {
-	left: [3000, 5000, 20000],
-	right : [-3000, 5000, 20000]
+	left: [3000, 2000, 20000],
+	right : [-3000, 2000, 20000]
 	};
 
-spot = [-1, -1, -1];
+spot = [0, 1, 0];
 
 function Pane(canvas, cam, width, height) {
 	canvas.width = width;
