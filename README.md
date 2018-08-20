@@ -4,4 +4,6 @@ This is part and especially extracted from the Lourah project addressing many su
 Blockchain, multithrheading, asynchronous ... utility libraries
 js3d is coded for performance.
 
+
+
 Nota: this project is entirely developed and tested on my Android phone using qeditpro.
