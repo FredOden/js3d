@@ -1,12 +1,12 @@
 
-var torus = new Torus(30, 10, 32, [255, 0, 0, 255]);
+var torus = new Torus(40, 20, 16, [255, 0, 0, 255]);
 
 
  var panes = {};
 
 cam = {
-	left: [3000, 2000, 20000],
-	right : [-3000, 2000, 20000]
+	left: [500, 2000, 4000],
+	right : [-500, 2000, 4000]
 	};
 
 spot = [0, 0, 1];
@@ -64,7 +64,7 @@ function stereoscopixDisplay(a, b, c) {
               );
               
               
-         console.log("axis to draw");
+         //console.log("axis to draw");
          [i,j,k].forEach(p => panes.canvas.forEach(canvas =>
                canvas.renderer.line(o, p,
                     [255,0,0,255],
@@ -73,7 +73,7 @@ function stereoscopixDisplay(a, b, c) {
                     canvas.camera)
                     )
                );
-          console.log("axis done" );
+          //console.log("axis done" );
          
          panes.canvas.forEach(canvas => {
            canvas.renderer.txel(i, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
