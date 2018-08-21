@@ -1,3 +1,7 @@
+
+var torus = new Torus(30, 10, 32, [255, 0, 0, 255]);
+
+
  var panes = {};
 
 cam = {
@@ -5,7 +9,7 @@ cam = {
 	right : [-3000, 2000, 20000]
 	};
 
-spot = [0, 1, 0];
+spot = [0, 0, 1];
 
 function Pane(canvas, cam, width, height) {
 	canvas.width = width;
@@ -43,6 +47,7 @@ function stereoscopixFromElements(elements) {
 function stereoscopixDisplay(a, b, c) {
 	//console.log("in");
 	panes.rotation = Lourah.js3d.rot(a, b, c);
+	var rot2 = Lourah.js3d.rot(a/2, b/2, c/2);
 	
 	var [o, i, j, k] = [
            [0, 0, 0]
@@ -59,7 +64,7 @@ function stereoscopixDisplay(a, b, c) {
               );
               
               
-         //console.log("axis to draw");
+         console.log("axis to draw");
          [i,j,k].forEach(p => panes.canvas.forEach(canvas =>
                canvas.renderer.line(o, p,
                     [255,0,0,255],
@@ -68,7 +73,7 @@ function stereoscopixDisplay(a, b, c) {
                     canvas.camera)
                     )
                );
-          //console.log("axis done" );
+          console.log("axis done" );
          
          panes.canvas.forEach(canvas => {
            canvas.renderer.txel(i, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
@@ -77,7 +82,8 @@ function stereoscopixDisplay(a, b, c) {
            canvas.renderer.txel(j, i, o, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot)
            }
            );
-           
+          
+          
          var co = [0, 128, 0, 255]; 
          var sz = 50;
          var [a, b, c, d, e, f, g, h] = [
@@ -107,6 +113,27 @@ function stereoscopixDisplay(a, b, c) {
            }
            );
 	
+	    
+	
+       
+        var lats = torus.lats();
+        
+        panes.canvas.forEach(canvas => {
+           for(var i = 0; i <  lats.length - 1; i++) {
+        	for(var j = 0; j <  lats[i].length - 1; j++) {
+                canvas.renderer.txel(lats[i][j], lats[i][j+1], lats[(i+1)][j], torus.color(), rot2, panes.translation, canvas.camera, spot);
+                canvas.renderer.txel(lats[(i+1)][j], lats[i][(j+1)], lats[i+1][(j+1)], torus.color(), rot2, panes.translation, canvas.camera, spot);
+            	}
+        	}
+           }
+           );
+           
+           
+           
+     /*  */
+
+	
+	
 	  panes.canvas.forEach(canvas => {
 	     var imageData = canvas.renderer.flush(
                 canvas.ctx.getImageData(0,0,
@@ -120,3 +147,31 @@ function stereoscopixDisplay(a, b, c) {
        //console.log("done");
        
 	}
+	
+function Torus(R, r, sides, color) {
+        var lats = new Array(sides + 1);
+
+        for(var i = 0; i< lats.length; i ++) {
+            var  phi = i*360/(lats.length - 1);
+        	lats[i] = new Array(sides +1);
+        	for(var j = 0; j< lats[i].length ; j++) {
+               var theta = j*360/(lats[i].length - 1);
+              
+               
+               
+               lats[i][j] = [
+                  (R + r*Math.cos(theta*Math.PI/180))
+                            *Math.cos(phi*Math.PI/180),
+                 (R + r*Math.cos(theta*Math.PI/180))
+                            *Math.sin(phi*Math.PI/180),
+                 (r*Math.sin(theta*Math.PI/180))
+                            // *Math.sin(phi*Math.PI/180)
+                 ];
+        	   }
+        	}
+           this.lats = () => lats;
+           this.color = () => color;
+		}
+		
+	
+	
