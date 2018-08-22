@@ -146,15 +146,20 @@ Lourah.js3d.Renderer = function(width, height) {
 	
 	
 	this.buildLine2d = (p2d1, p2d2, z1, z2, color) => {
-		var d = 0;
+		
 		
 		var v = [p2d2[0] - p2d1[0], p2d2[1] - p2d1[1]];
+		var vz = z2 - z1;
 		
 		// find a quick solution to determine
 		// nb of dots on a line ...
 		// @Check
 		
-		d = Math.sqrt((v[0]*v[0] + v[1]*v[1])*2);
+		//d = Math.sqrt((v[0]*v[0] + v[1]*v[1])*2);
+		
+		// still Mahattan is the best solution !
+        var d = (v[0] < 0?-v[0]:v[0]) + (v[1] < 0?-v[1]:v[1]);
+		
 		
 		//var [a, b] = [v[0] > 0?v[0]:-v[0], v[1] > 0?v[1]:-v[1]];
 		//d = (a > b? a : b)*this.sqrt2;
@@ -169,7 +174,7 @@ Lourah.js3d.Renderer = function(width, height) {
 			 v[0]*t + p2d1[0],
 			 v[1]*t + p2d1[1]
              ],
-			z: (z2 - z1)*t + z1,
+			z: vz*t + z1,
 			color:color
 			};
 		}
@@ -231,7 +236,7 @@ Lourah.js3d.Renderer = function(width, height) {
 		
 		// to quickly compare vector size without
 		// using scalarproduct or norm
-		this.sizeVector = (v) => (
+		this.manhattan = (v) => (
 		   (v[0]<0?-v[0]:v[0])
 		+ (v[1]<0?-v[1]:v[1])
 		+ (v[2]<0?-v[2]:v[2])
@@ -254,7 +259,7 @@ Lourah.js3d.Renderer = function(width, height) {
 			    this.vector(pr1, pr2),
 			    this.vector(pr2, pr3),
 			    this.vector(pr3, pr1)
-			].sort((a, b) => this.sizeVector(b) - this.sizeVector(a));
+			].sort((a, b) => this.manhattan(b) - this.manhattan(a));
 			// is quicker than:
             //.sort((a, b) => this.scalarProduct(b, b) - this.scalarProduct(a, a));
 			
