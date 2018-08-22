@@ -158,7 +158,8 @@ Lourah.js3d.Renderer = function(width, height) {
 		//d = Math.sqrt((v[0]*v[0] + v[1]*v[1])*2);
 		
 		// still Mahattan is the best solution !
-        var d = (v[0] < 0?-v[0]:v[0]) + (v[1] < 0?-v[1]:v[1]);
+		// + 2 for each end points
+        var d = 2 + (v[0] < 0?-v[0]:v[0]) + (v[1] < 0?-v[1]:v[1]);
 		
 		
 		//var [a, b] = [v[0] > 0?v[0]:-v[0], v[1] > 0?v[1]:-v[1]];
