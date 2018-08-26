@@ -1,15 +1,21 @@
 
-var torus = new Torus(40, 20, 16, [255, 0, 0, 255]);
+var torus = new Torus(40, 20, 6, [255, 0, 0, 255]);
 
+var perf = {
+	mean : 0,
+	sum : 0,
+	last : 0,
+	length : 0
+	};
 
  var panes = {};
 
 cam = {
-	left: [500, 2000, 4000],
-	right : [-500, 2000, 4000]
+	left: [2000, 2000, 40000],
+	right : [-2000, 2000, 40000]
 	};
 
-spot = [0, 0, 1];
+spot = ([0, 0, 1]);
 
 function Pane(canvas, cam, width, height) {
 	canvas.width = width;
@@ -24,8 +30,9 @@ function Pane(canvas, cam, width, height) {
 function stereoscopix(left, right) {
 	//console.log("init::" + left + "," + right);
 	
+	
      height = (window.innerHeight *.7)|0;
-     width = ((window.innerWidth - 40)/2)|0;
+     width = ((window.innerWidth - 45)/2)|0;
   
 	
 	panes = { canvas : [
@@ -46,6 +53,7 @@ function stereoscopixFromElements(elements) {
 
 function stereoscopixDisplay(a, b, c) {
 	//console.log("in");
+	var start = performance.now();
 	panes.rotation = Lourah.js3d.rot(a, b, c);
 	var rot2 = Lourah.js3d.rot(a/2, b/2, c/2);
 	
@@ -75,6 +83,8 @@ function stereoscopixDisplay(a, b, c) {
                );
           //console.log("axis done" );
          
+         
+         
          panes.canvas.forEach(canvas => {
            canvas.renderer.txel(i, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
            canvas.renderer.txel(o, j, k, [230, 128, 255, 255], panes.rotation, panes.translation, canvas.camera, spot);
@@ -83,6 +93,7 @@ function stereoscopixDisplay(a, b, c) {
            }
            );
           
+         // console.log("i:;"+JSON.stringify(i.pr.p2d));
           
          var co = [0, 128, 0, 255]; 
          var sz = 50;
@@ -107,33 +118,41 @@ function stereoscopixDisplay(a, b, c) {
                  canvas.renderer.polygon(s, co, panes.rotation, [25,25,0], canvas.camera)
             ));
 	
+	      
+         
+         
 	     panes.canvas.forEach(canvas => {
            canvas.renderer.txel(a, b, c, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
            canvas.renderer.txel(a, c, d, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
+           canvas.renderer.txel(e, f, g, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
+           canvas.renderer.txel(e, g, h, [220, 164, 255, 255], panes.rotation, [25, 25, 0], canvas.camera, spot);
            }
            );
 	
 	    
+       
 	
        
         var lats = torus.lats();
         
-        panes.canvas.forEach(canvas => {
+
+        
+        for(var k = 0; k < panes.canvas.length; k++) {
            for(var i = 0; i <  lats.length - 1; i++) {
         	for(var j = 0; j <  lats[i].length - 1; j++) {
-                canvas.renderer.txel(lats[i][j], lats[i][j+1], lats[(i+1)][j], torus.color(), rot2, panes.translation, canvas.camera, spot);
-                canvas.renderer.txel(lats[(i+1)][j], lats[i][(j+1)], lats[i+1][(j+1)], torus.color(), rot2, panes.translation, canvas.camera, spot);
+                panes.canvas[k].renderer.txel(lats[i][j], lats[i][j+1], lats[(i+1)][j], torus.color(), rot2, panes.translation, panes.canvas[k].camera, spot);
+                panes.canvas[k].renderer.txel(lats[(i+1)][j], lats[i][(j+1)], lats[i+1][(j+1)], torus.color(), rot2, panes.translation, panes.canvas[k].camera, spot);
             	}
         	}
-           }
-           );
-           
-           
+         }
+        
            
      /*  */
 
 	
 	
+           
+         
 	  panes.canvas.forEach(canvas => {
 	     var imageData = canvas.renderer.flush(
                 canvas.ctx.getImageData(0,0,
@@ -144,8 +163,13 @@ function stereoscopixDisplay(a, b, c) {
          }
        );
        
-       //console.log("done");
-       
+       perf.last = ((performance.now() - start)) ;
+       perf.sum += perf.last;
+       perf.length ++;
+       perf.mean = perf.sum/perf.length;
+       document.getElementById("log").innerHTML =
+       "<br>mean::"+ (perf.mean|0) + "::" + perf.length;
+
 	}
 	
 function Torus(R, r, sides, color) {
@@ -159,14 +183,14 @@ function Torus(R, r, sides, color) {
               
                
                
-               lats[i][j] = [
+               lats[i][j] = ([
                   (R + r*Math.cos(theta*Math.PI/180))
                             *Math.cos(phi*Math.PI/180),
                  (R + r*Math.cos(theta*Math.PI/180))
                             *Math.sin(phi*Math.PI/180),
                  (r*Math.sin(theta*Math.PI/180))
                             // *Math.sin(phi*Math.PI/180)
-                 ];
+                 ]);
         	   }
         	}
            this.lats = () => lats;
