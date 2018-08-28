@@ -4,6 +4,9 @@ Lourah.js3d (c) Frederic Oden
 
 fred.oden@gmail.com
 
+3d library ...
+speed optimized
+
 
 **/
 
@@ -61,18 +64,31 @@ Lourah.js3d.rotCalc = (a, b, c) =>(
 Lourah.js3d.dump = (m) => {
 	 console.log("m::" + m);
 };
-
-Lourah.js3d.transform = (p, rotation, translation) => {
+/**
+   transform ; perform translation (1st) + rotation
+   p : 3d point
+   m : rotation matrix
+   v : translation vector
+**/
+Lourah.js3d.transform = (p, m, v) => {
 	/*
 	cached transformed point in p.pr
 	with attributes p.r : rotation and p.t : translation
 	*/
 	
-	if (p.r === rotation && p.t === translation) return p.pr;
-    p.r = rotation;
-    p.t = translation;
-    return p.pr = (Lourah.js3d.rotate(rotation
-		                    , Lourah.js3d.translate(p, translation)));
+	if (p.r === m && p.t === v) return p.pr;
+    p.r = m;
+    p.t = v;
+	let p0 = p[0] + v[0]
+       ,  p1 = p[1] + v[1]
+       ,  p2 = p[2] + v[2]
+       ;
+    return p.pr =
+               (m)?[ m[0]*p0 + m[1]*p1 + m[2]*p2
+	                    , m[3]*p0 + m[4]*p1 + m[5]*p2
+	                    , m[6]*p0 + m[7]*p1 + m[8]*p2]
+	                  : [ p0, p1, p2 ]
+                      ;
 	};
 	
 
@@ -84,35 +100,54 @@ Lourah.js3d.transformDeg = (p, t, a, b, c) => (
 	);
 	
 Lourah.js3d.to2d = (p, c) => ([
-	((p[0]|0) - (c[0]|0))*(((c[2]|0)/((p[2]|0) + (c[2]|0)))) + (c[0]|0),
-	((p[1]|0) - (c[1]|0))*(((c[2]|0)/((p[2]|0) + (c[2]|0)))) + (c[1]|0)
+	((p[0] - c[0])*c[2]/(p[2] + c[2]) + c[0])|0,
+	((p[1] - c[1])*c[2]/(p[2] + c[2]) + c[1])|0
 	]);
 
 Lourah.js3d.toScreen = (p, dim) => [
-	((dim[0] / 2)|0) + (p[0]|0),
-	((dim[1] / 2)|0) - (p[1]|0)
+	(dim[0]/2 +  p[0])|0,
+	(dim[1]/2 - p[1])|0
 	];
 
-
-Lourah.js3d.project = (p, camera, screenDimension) => {
+/**
+project : perform 3d -> 2d projection according to
+c : camera position (point)
+dim : [width, height] of display panel
+**/
+Lourah.js3d.project = (p, c, dim) => {
 	  /*
 	  cached projected transformed point in p.p2d
 	  with attribute p.c : camera
+	  ^ y2d (p[1])
+	  |
+	  |
+	 +-------->
+                 x2d:(p[0])
 	  */
-      if(p.c === camera) return p.p2d;
-      p.c = camera;
-	  return p.p2d = (Lourah.js3d.toScreen(
-	                              Lourah.js3d.to2d(p, camera)
-	                                , screenDimension));
-	};
+      if(p.c === c) return p.p2d;
+      p.c = c;
+      return p.p2d =
+        [
+        (dim[0]/2 + ((p[0] - c[0])*c[2]/(p[2] + c[2]) + c[0])),
+	    (dim[1]/2 - ((p[1] - c[1])*c[2]/(p[2] + c[2]) + c[1]))
+        ];
+   };
 
+/**
+ where 3d objects are renderes in a 2d environnement
+ sized by width & height
+**/
 Lourah.js3d.Renderer = function(width, height) {
 	let zP = new Array(width * height);
 	let diagonal = Math.sqrt(width*width + height*height);
-	
+	let  {transform, project } = Lourah.js3d;
 
+    /**
+    zordered 2d points
+    **/
 	let storePoint2d = function(aw) {
-		for(let i = 0; i < aw.length; i++) {
+		let i = aw.length;
+		while(i--) {
 			let w = aw[i];
 			if ((w[0] < 0 || w[0] > width )|| (w[1] < 0 || w[1] > height)) continue;
 		    let wP = (w[0]|0) + (w[1]|0)*(width|0);
@@ -122,9 +157,12 @@ Lourah.js3d.Renderer = function(width, height) {
 			}
 		};
 	
+	/**
+	z ordered 3d points
+	**/
 	let storePoint3d = (p, color, rotation, translation, camera) => {
-		let pr = Lourah.js3d.transform(p, rotation, translation);
-		let p2 = Lourah.js3d.project(pr, camera, [width, height]);
+		let pr = transform(p, rotation, translation);
+		let p2 = project(pr, camera, [width, height]);
 		storePoint2d([[
 			p2[0], p2[1],
 			pr[2],
@@ -132,6 +170,10 @@ Lourah.js3d.Renderer = function(width, height) {
 			]]);
 		};
 	
+	/**
+	prepare a collection of 3d points in 2d 
+	z ordered
+	**/
 	this.shape = (ap, color, rotation, translation, camera) => {
 		ap.forEach(p => storePoint3d(p, color, rotation, translation, camera));
 		};
@@ -139,7 +181,14 @@ Lourah.js3d.Renderer = function(width, height) {
 		
 	this.sqrt2 = Math.sqrt(2);
 	
-	this.buildLine2d = (p2d1, p2d2, z1, z2, color) => {
+	/**
+	if color parameter is undefined : store points in a returned array
+	otherwize store points in the zPlan (zP) according
+	to depth of each point of the line.
+	number of points computed from the norm l1
+	(manhattan) of vector (p2d2 - p2d1).
+	*/
+	this.buildLine2d = function(p2d1, p2d2, z1, z2, color) {
 		
 		let b0 = p2d1[0]
 		    , b1 = p2d1[1]
@@ -150,66 +199,98 @@ Lourah.js3d.Renderer = function(width, height) {
            ;
 		let vz = z2 - z1;
 		
-		// find a quick solution to determine
-		// nb of dots on a line ...
-		// @Check
-		
-		//d = Math.sqrt((v[0]*v[0] + v[1]*v[1])*2);
-		
 		// still Mahattan is the best solution !
 		// + 2 for each end points
-        let d = (2 + (v0 < 0?-v0:v0) + (v1 < 0?-v1:v1))|0;
-		let step = 1/d;
-		ret = new Array(d|0);
+        let d = (2 + (v0 < 0?-v0:v0) + (v1 < 0?-v1:v1));
+		let step = 1.0/d;
+		let aw = (color)?[]:new Array(d|0);
 		v0 *= step;
 		v1 *= step;
 		vz *= step;
-		for(let count = 0|0; count < ret.length|0; count++) {
-		   ret[count] = [
-			 v0*count + b0,
-			 v1*count + b1,
-			 vz*count + z1,
-			color
-			];
+		let w;
+		let count = d|0;
+		let wP;
+		let x,y,z;
+		let zp;
+		while(count--) {
+		   w = [
+			 x = v0*(--d) + b0,
+			 y = v1*d + b1,
+			 z = vz*d+ z1,
+			 color
+			  ];
+			
+			if (color) {
+			   if ((x < 0 || x > width )|| (y < 0 || y > height)) continue;
+		       zp =zP[wP = (x|0) + (y|0)*(width|0)];
+		       if (zp === undefined || zp[2] <= z) {
+			      zP[wP] = w;
+			   }
+			} else {
+				aw[count] = w;
+			}
 		}
-		return ret;
+		return aw;
 	}
 	
-    
+    /**
+     build a segment between two 3d points
+     in 2d display
+    **/
 	    this.line = (p1, p2, color, rotation, translation, camera) => {
-		   let pr1 = Lourah.js3d.transform(p1, rotation, translation);
-		   let pr2 = Lourah.js3d.transform(p2, rotation, translation);
-		   storePoint2d(this.buildLine2d(
-		       Lourah.js3d.project(pr1, camera, [width, height])
-		     , Lourah.js3d.project(pr2, camera, [width, height])
+		   let pr1 = transform(p1, rotation, translation);
+		   let pr2 = transform(p2, rotation, translation);
+		   this.buildLine2d(
+		       project(pr1, camera, [width, height])
+		     , project(pr2, camera, [width, height])
 		     , pr1[2], pr2[2]
-		     , color));
+		     , color);
 		}
 		
+		/**
+		draw z ordered 2d segment
+		w1 & w2 contains 2d coordinates, z depth and color
+		**/
 		this.line2d = (w1, w2, color) => {
-		   storePoint2d(this.buildLine2d(w1, w2, w1[2], w2[2], color));
+		   this.buildLine2d(w1, w2, w1[2], w2[2], color);
 		}
 		
-		
+		/**
+		draw polyline in 2d display
+		from ap array of 3d points
+		**/
 		this.polyLine = (ap, color, rotation, translation, camera) => {
-			
-			let aw = ap.map((p, i) => {
-			     let pr = Lourah.js3d.transform(p, rotation, translation);
-			     let p2 = Lourah.js3d.project(pr, camera, [width, height]);
-			     return [ p2[0], p2[1], pr[2], color ];
-                 });
-			
-			aw.forEach((w, i) => {
-				if (i === aw.length - 1) return;
-				this.line2d(aw[i], aw[i+1],w[3]);
-				});
-				
+			let p2;
+			let i = ap.length;
+			let aw = new Array(i);
+			while(i--) {
+				   p2 = project(
+				           transform(ap[i], rotation, translation)
+                           , camera, [width, height]);
+                 aw[i] =  [ p2[0], p2[1], ap[i].pr[2], color ];
 			};
-			
+
+			let w, w1;
+			i = aw.length - 1;
+			while(i--) {
+				w = aw[i];
+				w1 = aw[i + 1];
+				this.buildLine2d(w, w1, w[2], w1[2], w[3]);
+				};
+			};
+		
+		/**
+		same as polyline: closing on first point
+		of ap array of 3d points
+		**/
 		this.polygon =  (ap, color, rotation, translation, camera) => {
 			this.polyLine([...ap, ap[0]], color, rotation, translation, camera);
 			};
 		
+		/**
+		collection of vector manipulation
+		routines... names are self explanatory!
+		**/
 		this.vector = (p1, p2) => ([
 		p2[0] - p1[0],
 		p2[1] - p1[1],
@@ -235,7 +316,7 @@ Lourah.js3d.Renderer = function(width, height) {
 		+ (v[2]<0?-v[2]:v[2])
 		);
 		
-		this.norm = v => Math.sqrt(this.scalarProduct(v, v));
+		this.norm = v => Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
 		
 		
 		this.normalize = v => {
@@ -243,18 +324,25 @@ Lourah.js3d.Renderer = function(width, height) {
 			return [ v[0]*norm, v[1]*norm, v[2]*norm ];
 			}
 		
-		
+		/**
+		txel is a triangle "pixel" from p1,p2 and p3
+		3d points.
+		triangle is filled by color modified
+		with "orientation" with  spot vector (infinite position)
+		to spot light source.
+		txel is used to build volumic surfaces
+		**/
 		this.txel = (p1, p2, p3, color, rotation, translation, camera, spot) => {
 			
-            let pr1 = Lourah.js3d.transform(p1, rotation, translation)
-               , pr2 = Lourah.js3d.transform(p2, rotation, translation)
-               , pr3 = Lourah.js3d.transform(p3, rotation, translation)
+            let pr1 = transform(p1, rotation, translation)
+               , pr2 = transform(p2, rotation, translation)
+               , pr3 = transform(p3, rotation, translation)
                ;
 			   
 			
-			let p2d1 = Lourah.js3d.project(pr1, camera, [width, height])
-                , p2d2 = Lourah.js3d.project(pr2, camera, [width, height])
-                , p2d3 = Lourah.js3d.project(pr3, camera, [width, height])
+			let p2d1 = project(pr1, camera, [width, height])
+                , p2d2 = project(pr2, camera, [width, height])
+                , p2d3 = project(pr3, camera, [width, height])
               ;
               
 			
@@ -264,12 +352,12 @@ Lourah.js3d.Renderer = function(width, height) {
 			    , vc = this.vector(pr3, pr1)
 			    ;
 			
-			let vam = this.manhattan(va)|0
-			   , vbm = this.manhattan(vb)|0
-			   , vcm = this.manhattan(vc)|0
+			let vam = this.manhattan(va)
+			   , vbm = this.manhattan(vb)
+			   , vcm = this.manhattan(vc)
 			   ;
 			
-			
+			// sort vectora by norm l1 (descending)
 			if (vam >= vbm && vam >= vcm) {
 				v1 = va;
 				if (vbm > vcm) { v2 = vb; v3 = vc; }
@@ -294,11 +382,12 @@ Lourah.js3d.Renderer = function(width, height) {
 			// caching spot vector normalization
 			if (spot.n === undefined) spot.n = this.normalize(spot);
 			
-			
+			// find orientation of surface
+			// with spot vector
 			let ortho = this.normalize(this.vectorialProduct(v2, v1));
 			let lambda = this.scalarProduct(ortho, spot.n);
 			
-			
+			// compute darkness/brightness
 			lambda = (.25 + .75*(lambda < 0?-lambda:lambda));
 			
 			let colorSpot = [
@@ -308,17 +397,18 @@ Lourah.js3d.Renderer = function(width, height) {
 			    color[3]|0
 			];
 			
-			
+			// compute triangle edges
 			let la = this.buildLine2d(p2d1, p2d2, pr1[2], pr2[2])
 			  ,lb = this.buildLine2d(p2d2, p2d3, pr2[2], pr3[2])
 			  ,lc = this.buildLine2d(p2d3, p2d1, pr3[2], pr1[2])
 			  ;
 			
-			let lal = la.length|0
-			   , lbl = lb.length|0
-			   , lcl = lc.length|0
+			let lal = la.length
+			   , lbl = lb.length
+			   , lcl = lc.length
 			   ;
 			
+			// sort line by length (descending)
 			let l1, l2, l3;
 			if (lal >= lbl && lal >= lcl) {
 				l1 = la;
@@ -336,32 +426,41 @@ Lourah.js3d.Renderer = function(width, height) {
 				else { l2 = lb; l3 = la }
 				}
 			
+			// fill triangle
 			let ll2 = l2.length
 			    , ll3 = l3.length
 			    , ll3m1 = l3.length - 1
-			    , ll2mll3m1 = l2.length + l3.length - 1
+			    , ll2mll3m1 = l2.length + l3.length - 2
+			    
 			    ;
-			
-			 for(let i = 0; i < l1.length; i++) {
+			 let i = l1.length;
+			 let w1, w2;
+			 while(i--) {
 				/* go from l1 to l2 follow l3 */
-				if (i < ll3) {
-					this.line2d(l1[i], l3[ll3m1 - i], colorSpot);
-					} else {
-					this.line2d(l1[i], l2[ll2mll3m1 - i], colorSpot);
-					}
+				w1 = l1[i];
+				w2 = (i < ll3) ?l3[ll3m1 - i]
+				                             :l2[ll2mll3m1 - i]
+					                         ;
+				this.buildLine2d(w1, w2, w1[2], w2[2], colorSpot);
 				}
 			};
 			
-		
+		/**
+		build image from projected zordered
+		points ...
+		... for a html5 canvas
+		**/
 		this.flush = (imageData) => {
-			for(let i = 0; i < zP.length; i++) {
-				if (zP[i] === undefined) continue;
-				let zp;
-				let i4 = i*4;
+			let i= zP.length;
+			let i4 = 0;
+			let zp;
+			while(i--) {
+				if (zP[i] === undefined) { i4 = 0; continue};
+				i4 = (i4)?(i4 - 7):(i*4);
 		        imageData.data[i4++] = (zp=zP[i][3])[0];
 		        imageData.data[i4++] = zp[1];
 		        imageData.data[i4++] = zp[2];
-				imageData.data[i4++] = zp[3];
+				imageData.data[i4] = zp[3];
 				}
 			return imageData;
 		};
@@ -369,6 +468,10 @@ Lourah.js3d.Renderer = function(width, height) {
 		this.display = () => (zP);
 	};
 
+/**
+some self explanatory routines
+for[ r,g,b,a]. color array
+**/
 Lourah.js3d.color = Lourah.js3d.color || {};
 
 Lourah.js3d.color.negative = ([r,g,b,a=255]) => (
